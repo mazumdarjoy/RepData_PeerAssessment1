@@ -1,0 +1,138 @@
+---
+title: "Reproduceable Research - Activity Monitoring Data"
+output: html_document
+---
+Author : Sanjay Mazumdar
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+###Loading the Data
+
+```{r}
+mydata<- read.csv("activity.csv", header = TRUE)
+head(mydata)
+```
+
+###Question 1: Calculate total number of steps taken each day
+```{r}
+library(ggplot2)
+steps<- data.frame(tapply(mydata$steps, mydata$date, sum))
+
+steps1<- cbind(rownames(steps), steps)
+
+colnames(steps1)<- c("Date", "Sum of Steps")
+rownames(steps1)<- NULL
+head(steps1)
+```
+
+###Question 2: Make a histogram of the total number of steps taken each day
+```{r}
+hist(steps1$`Sum of Steps`, breaks = 20, xlab = "Sum of Steps", yaxt = "n", main = "Histogram Of Total No. of Steps Per Day")
+axis(2, las = 2)
+```
+
+###Question 3: Calculate and report the mean and median of the total number of steps taken per day
+```{r}
+mean(steps1$`Sum of Steps`, na.rm =  TRUE)
+
+median(steps1$`Sum of Steps`, na.rm = TRUE )
+```
+
+###Question 4: Make a time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+```{r}
+mydata<- read.csv("activity.csv", header = TRUE)
+
+steps2<- data.frame(tapply(mydata$steps, mydata$interval, 
+                       function(x)  mean(x,na.rm = TRUE)))
+
+steps2<- cbind(rownames(steps2), steps2)
+rownames(steps2)<- NULL
+colnames(steps2)<- c("interval","Average No. of Steps" )
+
+steps2$interval <- as.numeric(as.character(steps2$interval))
+
+ggplot(steps2, aes(interval, `Average No. of Steps`)) + geom_line()+xlab("Interval")
+```
+
+
+###Question 5: Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps
+```{r}
+steps2[steps2$`Average No. of Steps`==max(steps2$`Average No. of Steps`), ]
+```
+
+###Queston 6: Calculate and report the total number of missing values in the dataset
+```{r}
+nrow(mydata) - sum(complete.cases(mydata))
+```
+
+###Question 7: Devise a strategy for filling in all of the missing values in the dataset
+
+Stratergy - Na's to be replaced by Mean of 5 Min interval
+```{r}
+mydata1<- mydata
+
+mydata2<- merge(mydata1, steps2, by = "interval")
+
+a<-is.na(mydata2$steps)
+
+mydata2$steps[a]<- mydata2$`Average No. of Steps`[a]
+
+head(mydata2)
+```
+
+###Question 8: Create a new dataset that is equal to the original dataset but with the missing data filled in
+```{r}
+mydata2$`Average No. of Steps`<- NULL
+head(mydata2)
+```
+
+###Queston 9: Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?
+```{r}
+steps_new<- data.frame(tapply(mydata2$steps, mydata2$date, sum))
+steps_new<- cbind(rownames(steps_new), steps_new)
+colnames(steps_new)<- c("Date", "Sum of Steps")
+rownames(steps_new)<- NULL
+
+hist(steps_new$`Sum of Steps`, breaks = 20, xlab = "Sum of Steps", yaxt = "n", main= "Total Steps Daily")
+axis(2, las = 2)
+
+mean(steps_new$`Sum of Steps`, na.rm =  TRUE)
+
+median(steps_new$`Sum of Steps`, na.rm = TRUE )
+```
+
+###Questin 10: Create a new factor variable in the dataset with two levels - "weekday" and "weekend" indicating whether a given date is a weekday or weekend day.
+```{r}
+mydata2$day<- weekdays(as.Date(mydata2$date))
+
+mydata2$weekday<- ifelse(mydata2$day %in% c("Saturday","Sunday"), "weekend", "weekday")
+head(mydata2)
+```
+
+###Question 11: Make a panel plot containing a time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis)
+```{r}
+library(gridExtra)
+mydata2$weekday<- as.factor(mydata2$weekday)
+
+mydata3<- aggregate(mydata2$steps ~ mydata2$weekday+mydata2$interval, mydata2,
+                    mean)
+colnames(mydata3)<- c("Weekday", "Interval", "Sum of Steps")
+
+mydata4<- subset(mydata3, mydata3$Weekday=="weekday")
+mydata5<- subset(mydata3, mydata3$Weekday=="weekend")
+
+p1<- ggplot(mydata4, aes(mydata4$Interval, mydata4$`Sum of Steps`))+
+  geom_line()+facet_grid(mydata4$Weekday~.)+xlab("Interval")+ ylab("Steps")
+
+p2<- ggplot(mydata5, aes(mydata5$Interval, mydata5$`Sum of Steps`))+
+  geom_line()+facet_grid(mydata5$Weekday~.)+xlab("Interval")+ ylab("Steps")
+
+grid.arrange(p1, p2, nrow =2)
+```
+
+
+
+
+
